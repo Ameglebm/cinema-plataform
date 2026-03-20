@@ -1,0 +1,103 @@
+version: '3.9'
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cinema-api
+    # Roda migrations e sobe a API
+    command: >
+      sh -c "npx prisma migrate deploy && ./node_modules/.bin/ts-node-dev --respawn --transpile-only src/main.ts"
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    networks:
+      - cinema_network
+
+  prisma-studio:
+    image: node:20-alpine
+    container_name: cinema-prisma-studio
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: >
+      sh -c "npm install --silent --no-progress && npx prisma studio --port 5555 --browser none"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - "5555:5555"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cinema_network
+    logging:
+      driver: "none"
+
+  postgres:
+    image: postgres:15
+    container_name: cinema-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    networks:
+      - cinema_network
+    logging:
+      driver: "none"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cinema -d cinema"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: cinema-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - cinema_network
+    logging:
+      driver: "none"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: cinema-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - cinema_network
+    logging:
+      driver: "none"
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: cinema-portainer
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - cinema_network
+    restart: unless-stopped
+    logging:
+      driver: "none"
+
+volumes:
+  portainer_data:
+
+networks:
+  cinema_network:
