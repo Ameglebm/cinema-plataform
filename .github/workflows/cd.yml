@@ -4,15 +4,12 @@ on:
   push:
     branches: [main]
 
-# Garante que só um deploy roda por vez
 concurrency:
   group: cd-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ─────────────────────────────────────────
-  # JOB 1 – Build & Push Docker Image
-  # ─────────────────────────────────────────
+
   docker:
     name: Build & Push Image
     runs-on: ubuntu-latest
@@ -59,10 +56,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ─────────────────────────────────────────
-  # JOB 2 – Deploy (placeholder)
   # Ativar quando K8s / Terraform estiverem prontos
-  # ─────────────────────────────────────────
+
   # deploy:
   #   name: Deploy to Kubernetes
   #   runs-on: ubuntu-latest
